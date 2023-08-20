@@ -1,0 +1,12 @@
+pip install uvicorn
+pip install SQLAlchemy
+pip install python-dotenv
+pip install PyJWT
+pip install slowapi
+pip install fastapi-jwt
+pip install Pillow
+pip install passlib
+pip install sqlalchemy_utils
+pip install qrcode
+pip install websocket-client
+pip install python-multipart

@@ -38,7 +38,6 @@ from friends.friend_request import (reject_request,
                                     delete_user as friend_request_delete_func,
                                     create_request,
                                     check_request)
-from database.models import Friend,Friend_request
 from Iot.iot import (
     pair_device,
     unpair_device,
@@ -979,5 +978,3 @@ async def iot_websocket_endpoint(ws : WebSocket):
         pass
 
 uvicorn.run(app)#,ssl_keyfile="./server.key",ssl_certfile="./server.crt")
-
-#aaaaa
