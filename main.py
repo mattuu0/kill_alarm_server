@@ -83,9 +83,10 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 #設定
-icons_dir = os.path.abspath("./UserIcons")
+icons_dir = os.path.abspath("./UserDatas")
 base_icon = os.path.join(icons_dir,"default_icon.png")
 payloads_data = ["light","water","vibration","blow","sound"]
+strength_data = ["high","middle","low"]
 
 #フォルダ初期化
 try:
@@ -398,7 +399,7 @@ def get_userid(request: Request,credentials: JwtAuthorizationCredentials = Secur
     access_tokenid = subjects["tokenid"]                            #アクセストークンID
     
     #アクセストークン検証
-    if token_util.verify_access_token(userid,access_tokenid):
+    if token_util.verify_access_token(userid,access_tokenid):   
         #websocket認証用トークン生成
         is_success,websocket_token,tokenid = token_util.generate_websocket_token(userid,access_tokenid)
     
@@ -429,7 +430,7 @@ def get_userid(request: Request,credentials: JwtAuthorizationCredentials = Secur
 
             #サイズを検証する
             if img_size > Image_Max_Size:
-                raise HTTPException(status_code=400, detail="Image file size too large")
+                raise HTTPException(status_code=413, detail="Image file size too large")
 
             #画像を読み込む
             filepath = os.path.join(icons_dir,f"{userid}.png")
@@ -527,6 +528,65 @@ async def unpair_iot(request: Request,credentials: JwtAuthorizationCredentials =
     else:
         raise HTTPException(status_code=401, detail="invalid token")
 
+#タイマー動作
+class timer_payload(BaseModel):
+    name : str
+    strength : str
+    args : List[str]
+
+#タイマーデータ
+class timers_data(BaseModel):
+    call_time:str                           #起動時間
+    payloads : List[timer_payload]          #動作一覧
+    enabled : bool                          #有効か
+
+#タイマーデータを更新する
+@app.post("/update_timer")
+async def wakeup_friend(request: Request,timers : List[timers_data],credentials: JwtAuthorizationCredentials = Security(access_security)):
+    subjects = dict(credentials.subject)
+    userid = subjects["userid"]                                     #ユーザーID取得
+    access_tokenid = subjects["tokenid"]                            #アクセストークンID
+
+    return_result = {"msgtype" : "","message" : "","msgcode" : ""}
+    #アクセストークン検証
+    if token_util.verify_access_token(userid,access_tokenid):
+        #フレンドがIOTデバイスを登録しているか
+        is_registerd,iot_device = get_device_from_userid(str(userid))
+
+        #登録されていなかったら
+        if not is_registerd:
+            raise HTTPException(status_code=400, detail="User has not paired any device")
+
+        #タイマーを回す
+        for timer in timers:
+            #起こす方法が正しいかを検証する
+            payloads = []
+            for payload_info in timer.payloads:
+                #ペイロードが含まれているか
+                if str(payload_info.name).lower() in payloads_data:
+                    #強さが含まれているか
+                    if str(payload_info.strength).lower() in strength_data:
+                        add_dict = {
+                            "payload_name" : payload_info.name.lower(),
+                            "strong" : payload_info.strength.lower(),
+                            "args" : payload_info.args
+                        }
+
+                    payloads.append(add_dict)
+                else:
+                    #正しくなければエラー
+                    raise HTTPException(status_code=400, detail="Invalid payload")
+
+            timer_json = {
+                "enabled" : timer.enabled,          #有効か
+                "call_time" : timer.call_time,      #起動時間
+                "payloads" : payloads               #動作内容
+            }
+
+        await send_msg(iot_device.deviceid,notify_payload)
+
+        return return_result
+
 class payload_data(BaseModel):
     payload_name : str
 
@@ -550,14 +610,13 @@ async def wakeup_friend(request: Request,select_data : wakeup_payload,credential
         if not is_registerd:
             raise HTTPException(status_code=404, detail="no friends found")
 
-        """
         #フレンドかどうか確認する
         is_friend,friend = check_friend(userid,payload_data.friendid)
 
         #フレンドじゃなければ戻る
         if not is_friend:
             raise HTTPException(status_code=403, detail="not friends")
-        """
+
             
         #フレンドがIOTデバイスを登録しているか
         is_registerd,iot_device = get_device_from_userid(str(select_data.friendid))
@@ -587,6 +646,8 @@ async def wakeup_friend(request: Request,select_data : wakeup_payload,credential
 
         await send_msg(iot_device.deviceid,notify_payload)
         return {"status":"success"}
+    else:
+        raise HTTPException(status_code=403, detail="Invalid Token")
 
 #ユーザーIDを取得する
 @app.get("/getId/{username}")
@@ -598,6 +659,7 @@ def get_userid_from_name(username : str):
         return {"userid":str(user.userid)}
     
     raise HTTPException(status_code=404,detail="User Not Found")
+
 #ユーザーアイコンを取得する
 @app.get("/geticon/{userid:path}")
 async def get_icon(userid : str):
@@ -888,7 +950,8 @@ async def user_websocket_endpoint(ws : WebSocket):
 
                     await delete_friend_user(userid,friendid)
                 elif msgtype == "get_friends":
-                    pass
+                    #フレンド
+                    await get_friends(userid)
         except:
             import traceback
             traceback.print_exc()
