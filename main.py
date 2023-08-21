@@ -588,6 +588,16 @@ async def wakeup_friend(request: Request,select_data : wakeup_payload,credential
         await send_msg(iot_device.deviceid,notify_payload)
         return {"status":"success"}
 
+#ユーザーIDを取得する
+@app.get("/getId/{username}")
+def get_userid_from_name(username : str):
+    #ユーザーが登録されているか確認
+    is_registred,user = check_registerd_from_username(username)
+
+    if is_registred:
+        return {"userid":str(user.userid)}
+    
+    raise HTTPException(status_code=404,detail="User Not Found")
 #ユーザーアイコンを取得する
 @app.get("/geticon/{userid:path}")
 async def get_icon(userid : str):
@@ -977,4 +987,4 @@ async def iot_websocket_endpoint(ws : WebSocket):
     except:
         pass
 
-uvicorn.run(app)#,ssl_keyfile="./server.key",ssl_certfile="./server.crt")
+uvicorn.run(app,host="0.0.0.0",port=8000)#,ssl_keyfile="./server.key",ssl_certfile="./server.crt")
