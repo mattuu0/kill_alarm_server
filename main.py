@@ -225,7 +225,7 @@ class UserAuth(BaseModel):
 @app.post("/login")
 @limiter.limit("10/5seconds")
 def login(request: Request,auth_data : UserAuth):
-
+    # raise HTTPException(404, detail="Not Found")
     #登録されているか確認
     is_registerd,user = check_registerd_from_username(auth_data.username)
 
