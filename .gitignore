@@ -164,8 +164,8 @@ cython_debug/
 runtime/
 
 
-UserIcons/*
-!/UserIcons/default_icon.png
+UserDatas/*
+!/UserDatas/default_icon.png
 
 server.crt
 server.key

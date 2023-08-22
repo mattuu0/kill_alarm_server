@@ -44,7 +44,7 @@ def register_device():
 
     img = qr.make_image(fill_color="black", back_color="white")
 
-    qrcode_path = f"QR_{iot_deviceid}.png"
+    qrcode_path = f"QR_Code.png"
 
     register_json = {
         "deviceToken" : iot_token,

@@ -67,7 +67,17 @@ def delete_friend(userid:str,friend_userid:str) -> bool:
 def get_friends(userid : str):
     friends = session.query(Friend).filter(or_(Friend.friend_userid == userid,Friend.userid == userid))
 
-    return friends.all()
+    return_dict = {"msgcode":"11144","friends":[]}
+    
+    #フレンド情報を追加する
+    for friend in friends.all():
+        friend_dict = {
+            "friendid":friend.friendid,                     #相手のID
+            "friend_userid" : friend.friend_userid,         
+            "friended_at" : friend.created_at.timestamp()
+        }
+        
+        return_dict["friends"].append(friend_dict)
 
 #IDからフレンド情報を取得する
 def get_info(userid:str,friendid:str):
