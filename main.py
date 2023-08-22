@@ -262,7 +262,7 @@ async def logout(request: Request,credentials: JwtAuthorizationCredentials = Sec
     subjects = dict(credentials.subject)
     userid = subjects["userid"]                                     #ユーザーID取得
     access_tokenid = subjects["tokenid"]                            #アクセストークンID
-    2
+    
     #アクセストークン検証
     if token_util.verify_refresh_token(userid,access_tokenid):
         #ユーザーを取得する
@@ -371,6 +371,35 @@ def refresh_token(request: Request,credentials: JwtAuthorizationCredentials = Se
     raise HTTPException(status_code=401, detail="Invalid refresh token")
 
 #ここまで
+class profile_data(BaseModel):
+    display_name : str
+
+#プロフィーユ変更
+@app.post("/change_profile")
+def change_profile(profile : profile_data,credentials: JwtAuthorizationCredentials = Security(access_security)):
+    #ディスプレイの長さを検証する
+    if str(profile.display_name) > 255:
+        raise HTTPException(status_code=400,detail="Display name is too long")
+    
+    subjects = dict(credentials.subject)
+    userid = subjects["userid"]                                     #ユーザーID取得
+    access_tokenid = subjects["tokenid"]                            #アクセストークンID
+    
+    #アクセストークン検証
+    if token_util.verify_access_token(userid,access_tokenid): 
+        #ユーザーが登録されているか
+        is_registerd,user_obj = check_registerd_from_userid(userid)
+
+        #登録されていたら
+        if is_registerd:
+            #ディスプレイネームを換える
+            user_obj.display_name = profile.display_name
+            session.commit()
+            
+            return {"status":"success"}
+
+    raise HTTPException(status_code=401, detail="Invalid Token")
+    
 #認証が必要なエンドポイント
 @app.get('/get_profile')
 @limiter.limit("10/5seconds")
@@ -385,7 +414,8 @@ def get_userid(request: Request,credentials: JwtAuthorizationCredentials = Secur
 
         return {
             "userid" : userid,
-            "username" : user_data.username
+            "username" : user_data.username,
+            "display_name" : user_data.display_name
         }
     
     raise HTTPException(status_code=401, detail="Invalid Token")
@@ -611,7 +641,7 @@ async def wakeup_friend(request: Request,timers_data : timer_body,credentials: J
 class payload_data(BaseModel):
     payload_name : str
 
-#
+#起こした人の情報
 class wakeup_payload(BaseModel):
     friendid:str
     payloads:List[payload_data]
