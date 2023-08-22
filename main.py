@@ -262,7 +262,7 @@ async def logout(request: Request,credentials: JwtAuthorizationCredentials = Sec
     subjects = dict(credentials.subject)
     userid = subjects["userid"]                                     #ユーザーID取得
     access_tokenid = subjects["tokenid"]                            #アクセストークンID
-    
+    2
     #アクセストークン検証
     if token_util.verify_refresh_token(userid,access_tokenid):
         #ユーザーを取得する
@@ -540,9 +540,11 @@ class timers_data(BaseModel):
     payloads : List[timer_payload]          #動作一覧
     enabled : bool                          #有効か
 
+class timer_body(BaseModel):
+    timers : List[timers_data]
 #タイマーデータを更新する
 @app.post("/update_timer")
-async def wakeup_friend(request: Request,timers : List[timers_data],credentials: JwtAuthorizationCredentials = Security(access_security)):
+async def wakeup_friend(request: Request,timers_data : timer_body,credentials: JwtAuthorizationCredentials = Security(access_security)):
     subjects = dict(credentials.subject)
     userid = subjects["userid"]                                     #ユーザーID取得
     access_tokenid = subjects["tokenid"]                            #アクセストークンID
@@ -557,8 +559,12 @@ async def wakeup_friend(request: Request,timers : List[timers_data],credentials:
         if not is_registerd:
             raise HTTPException(status_code=400, detail="User has not paired any device")
 
+        notify_data = {
+            "msgcode" : "11142",
+            "timers" : []
+        }
         #タイマーを回す
-        for timer in timers:
+        for timer in timers_data.timers:
             #起こす方法が正しいかを検証する
             payloads = []
             for payload_info in timer.payloads:
@@ -566,30 +572,46 @@ async def wakeup_friend(request: Request,timers : List[timers_data],credentials:
                 if str(payload_info.name).lower() in payloads_data:
                     #強さが含まれているか
                     if str(payload_info.strength).lower() in strength_data:
+
+                        #追加情報
                         add_dict = {
                             "payload_name" : payload_info.name.lower(),
                             "strong" : payload_info.strength.lower(),
                             "args" : payload_info.args
                         }
-
+                    else:
+                        #強さが向こうの時
+                        raise HTTPException(status_code=400, detail="Invalid Strength")
                     payloads.append(add_dict)
                 else:
                     #正しくなければエラー
+
                     raise HTTPException(status_code=400, detail="Invalid payload")
 
+            #タイマーデータ
             timer_json = {
                 "enabled" : timer.enabled,          #有効か
                 "call_time" : timer.call_time,      #起動時間
                 "payloads" : payloads               #動作内容
-            }
+            }            
 
-        await send_msg(iot_device.deviceid,notify_payload)
+            #タイマー追加
+            notify_data["timers"].append(timer_json)
 
+        await send_msg(iot_device.deviceid,notify_data)
+
+        return_result["msgcode"] = "11140"
+        return_result["msgtype"] = "server_msg"
+        return_result["message"] = "success"
         return return_result
+    
+    raise HTTPException(status_code=400,detail="Bad Timer")
 
+#起こす内容
 class payload_data(BaseModel):
     payload_name : str
 
+#
 class wakeup_payload(BaseModel):
     friendid:str
     payloads:List[payload_data]
@@ -611,7 +633,7 @@ async def wakeup_friend(request: Request,select_data : wakeup_payload,credential
             raise HTTPException(status_code=404, detail="no friends found")
 
         #フレンドかどうか確認する
-        is_friend,friend = check_friend(userid,payload_data.friendid)
+        is_friend,friend = check_friend(userid,select_data.friendid)
 
         #フレンドじゃなければ戻る
         if not is_friend:
@@ -639,11 +661,14 @@ async def wakeup_friend(request: Request,select_data : wakeup_payload,credential
                 #正しくなければエラー
                 raise HTTPException(status_code=400, detail="Invalid payload")
 
+        #通知データ
         notify_payload = {
+            "msgcode" : "11143",
             "call_user" : str(userid),
             "payloads" : payloads
         }
 
+        #IOTへ通知する
         await send_msg(iot_device.deviceid,notify_payload)
         return {"status":"success"}
     else:

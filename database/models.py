@@ -15,6 +15,7 @@ def gen_uniqueid() -> str:
     userid = str(uuid.uuid4())
     return sha3_256(userid.encode("utf-8")).hexdigest()
 
+#IOTデバイスのIDを生成する
 def gen_iotid() -> str:
     userid = str(uuid.uuid4())
     secretid = secrets.token_bytes(128)
@@ -24,16 +25,18 @@ def gen_iotid() -> str:
 #ユーザーモデル
 class User(Base):
     __tablename__ = "user"  # テーブル名を指定
-    userid = Column(String(id_length), primary_key=True, default=gen_uniqueid)
-    username = Column(String(255))
-    password = Column(String)
+    userid = Column(String(id_length), primary_key=True, default=gen_uniqueid)  #ユーザID
 
-    refresh_tokenid = Column(String)
-    access_tokenid = Column(String)
-    websocket_tokenid = Column(String)
-    is_active = Column(Boolean,default=True)
+    display_name = Column(String(255))                                          #表示名
+    username = Column(String(255))                                              #ユーザー名 (検索に使う)
+    password = Column(String)                                                   #パスワード
 
-    timers = relationship("TimerData",cascade="all",uselist=False)
+    refresh_tokenid = Column(String)                                            #リフレッシュトークンID
+    access_tokenid = Column(String)                                             #アクセストークンID
+    websocket_tokenid = Column(String)                                          #WebsocketトークンID
+    is_active = Column(Boolean,default=True)                                    #有効化
+
+    timers = relationship("TimerData",cascade="all",uselist=False)              #タイマー
 
 #目覚ましデータ
 class TimerData(Base):
@@ -75,9 +78,9 @@ class Friend_request(Base):
 
 #IOTデバイスオブジェクト
 class iot_device(Base):
-    __tablename__ = "IOT_Device"
-    deviceid = Column(String(id_length),default=gen_iotid,primary_key=True)
-    tokenid = Column(String)
-    paring_userid = Column(String(id_length),default="")
+    __tablename__ = "IOT_Device"                                                                        #IOTデバイス
+    deviceid = Column(String(id_length),default=gen_iotid,primary_key=True)                             #デバイスID
+    tokenid = Column(String)                                                                            #トークンID
+    paring_userid = Column(String(id_length),default="")                                                #ペアリングしているユーザID
 
 Base.metadata.create_all(bind=engine)

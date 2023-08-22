@@ -38,6 +38,7 @@ def create_user(username : str,password : str) -> User:
 
     save_user.password = Hash.get_password_hash(password)
 
+    save_user.display_name = username
     #ユーザー追加
     session.add(save_user)
     
