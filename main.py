@@ -109,7 +109,7 @@ class token_util():
         }
 
         #リフレッシュトークン
-        refresh_token = refresh_security.create_refresh_token(subject = subjects,expires_delta = refresh_token_effective_date)
+        refresh_token = refresh_security.create_refresh_token(subject = subjects)
 
         return tokenid,refresh_token
     
@@ -282,6 +282,7 @@ async def logout(request: Request,credentials: JwtAuthorizationCredentials = Sec
 
             return {"status":"success"}
     
+    raise HTTPException(status_code=400,detail="Bad Request")
 #サインイン
 @app.post("/signup")
 @limiter.limit("10/5seconds")
