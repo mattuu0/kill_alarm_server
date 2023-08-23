@@ -83,14 +83,14 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 #設定
-icons_dir = os.path.abspath("./UserDatas")
-base_icon = os.path.join(icons_dir,"default_icon.png")
+user_datas_dir = os.path.abspath("./UserDatas")
+base_icon = os.path.join(user_datas_dir,"default_icon.png")
 payloads_data = ["light","water","vibration","blow","sound"]
 strength_data = ["high","middle","low"]
 
 #フォルダ初期化
 try:
-    os.makedirs(icons_dir)
+    os.makedirs(user_datas_dir)
 except:
     import traceback
     traceback.print_exc()
@@ -308,15 +308,22 @@ def signup(request: Request,singin_data : UserAuth):
     is_success,access_token,access_tokenid = token_util.generate_access_token(userid,refresh_tokenid)
 
     if is_success:
-        filepath = os.path.join(icons_dir,f"{userid}.png")
+        icon_filepath = os.path.join(user_datas_dir,f"{userid}.png")                 #アイコンのパス
+        timer_filepath = os.path.join(user_datas_dir,f"{userid}.json")               #タイマー情報のパス
 
-        if os.path.commonprefix((os.path.realpath(filepath),icons_dir)) != icons_dir:
+        if os.path.commonprefix((os.path.realpath(icon_filepath),user_datas_dir)) != user_datas_dir:      #パス検証
+            raise HTTPException(status_code=401, detail="Invalid Path")
+
+        if os.path.commonprefix((os.path.realpath(timer_filepath),user_datas_dir)) != user_datas_dir:      #パス検証
             raise HTTPException(status_code=401, detail="Invalid Path")
 
         #ファイルが存在するか
-        if not os.path.exists(filepath):
-            copyfile(base_icon,filepath)
+        if not os.path.exists(icon_filepath):
+            copyfile(base_icon,icon_filepath)
 
+        if not os.path.exists(timer_filepath):
+            with open(timer_filepath,"w") as create_file:      #空のファイルを生成する
+                json.dump({},create_file)
         return {"refresh_token" : refresh_token,"access_token" : access_token}
 
     raise HTTPException(status_code=401, detail="Error")
@@ -337,12 +344,21 @@ async def deleteUser(request: Request,credentials: JwtAuthorizationCredentials =
         iot_delete_user_func(userid)
         delete_user(userid)
         
-        #アイコンを削除する
-        filepath = os.path.join(icons_dir,f"{userid}.png")
+        #アイコンファイルパス
+        icon_filepath = os.path.join(user_datas_dir,f"{userid}.png")
 
-        if os.path.commonprefix((os.path.realpath(filepath),icons_dir)) == icons_dir:
-            if os.path.exists(filepath):
-                os.remove(filepath)
+        #辞書ファイルパス
+        timer_filepath = os.path.join(user_datas_dir,f"{userid}.json")
+
+        #アイコンを削除する
+        if os.path.commonprefix((os.path.realpath(icon_filepath),user_datas_dir)) == user_datas_dir:
+            if os.path.exists(icon_filepath):
+                os.remove(icon_filepath)
+
+        #タイマーデータを削除する
+        if os.path.commonprefix((os.path.realpath(timer_filepath),user_datas_dir)) == user_datas_dir:
+            if os.path.exists(timer_filepath):
+                os.remove(timer_filepath)
 
         #Websocketを切断する
         await close_client(userid)
@@ -463,9 +479,9 @@ def get_userid(request: Request,credentials: JwtAuthorizationCredentials = Secur
                 raise HTTPException(status_code=413, detail="Image file size too large")
 
             #画像を読み込む
-            filepath = os.path.join(icons_dir,f"{userid}.png")
+            filepath = os.path.join(user_datas_dir,f"{userid}.png")
 
-            if os.path.commonprefix((os.path.realpath(filepath),icons_dir)) != icons_dir:
+            if os.path.commonprefix((os.path.realpath(filepath),user_datas_dir)) != user_datas_dir:
                 raise HTTPException(status_code=401, detail="Invalid Path")
 
             readImg = Image.open(file.file)
@@ -558,6 +574,34 @@ async def unpair_iot(request: Request,credentials: JwtAuthorizationCredentials =
     else:
         raise HTTPException(status_code=401, detail="invalid token")
 
+#タイマーデータを更新する
+@app.get("/get_timer")
+async def wakeup_friend(request: Request,credentials: JwtAuthorizationCredentials = Security(access_security)):
+    subjects = dict(credentials.subject)
+    userid = subjects["userid"]                                     #ユーザーID取得
+    access_tokenid = subjects["tokenid"]                            #アクセストークンID
+
+    return_result = {"msgtype" : "","message" : "","msgcode" : ""}
+    #アクセストークン検証
+    if token_util.verify_access_token(userid,access_tokenid):
+
+        timer_filepath = os.path.join(user_datas_dir,f"{userid}.json")
+
+        if os.path.commonprefix((os.path.realpath(timer_filepath),user_datas_dir)) != user_datas_dir:      #パス検証
+            raise HTTPException(status_code=401, detail="Invalid Path")
+        
+        #ファイルを読み込む
+
+        return_dict = {}
+        with open(timer_filepath,"r",encoding="utf-8") as read_data:
+            return_dict = json.load(read_data)
+        
+        return_result["msgcode"] = "11145"
+        return_result["timer_data"] = return_dict
+
+        return return_result
+    else:
+        raise HTTPException(status_code=401,detail="Invalid Token")
 #タイマー動作
 class timer_payload(BaseModel):
     name : str
@@ -566,12 +610,14 @@ class timer_payload(BaseModel):
 
 #タイマーデータ
 class timers_data(BaseModel):
-    call_time:str                           #起動時間
+    call_hour:str                           #起動時間
+    call_min:str                            #起動分   
     payloads : List[timer_payload]          #動作一覧
     enabled : bool                          #有効か
 
 class timer_body(BaseModel):
     timers : List[timers_data]
+
 #タイマーデータを更新する
 @app.post("/update_timer")
 async def wakeup_friend(request: Request,timers_data : timer_body,credentials: JwtAuthorizationCredentials = Security(access_security)):
@@ -582,6 +628,12 @@ async def wakeup_friend(request: Request,timers_data : timer_body,credentials: J
     return_result = {"msgtype" : "","message" : "","msgcode" : ""}
     #アクセストークン検証
     if token_util.verify_access_token(userid,access_tokenid):
+
+        timer_filepath = os.path.join(user_datas_dir,f"{userid}.json")
+
+        if os.path.commonprefix((os.path.realpath(timer_filepath),user_datas_dir)) != user_datas_dir:      #パス検証
+            raise HTTPException(status_code=401, detail="Invalid Path")
+
         #フレンドがIOTデバイスを登録しているか
         is_registerd,iot_device = get_device_from_userid(str(userid))
 
@@ -617,11 +669,17 @@ async def wakeup_friend(request: Request,timers_data : timer_body,credentials: J
                     #正しくなければエラー
 
                     raise HTTPException(status_code=400, detail="Invalid payload")
+                
+            #タイマー出たを更新する
+            with open(timer_filepath,"w",encoding="utf-8") as write_data:
+                dump_string = timers_data.model_dump_json(indent=3)
+                write_data.write(dump_string)
 
             #タイマーデータ
             timer_json = {
                 "enabled" : timer.enabled,          #有効か
-                "call_time" : timer.call_time,      #起動時間
+                "call_hour" : timer.call_hour,      #起動時間
+                "call_min" : timer.call_min,        #起動分
                 "payloads" : payloads               #動作内容
             }            
 
@@ -718,9 +776,9 @@ def get_userid_from_name(username : str):
 #ユーザーアイコンを取得する
 @app.get("/geticon/{userid:path}")
 async def get_icon(userid : str):
-    filepath = os.path.join(icons_dir,f"{userid}.png")
+    filepath = os.path.join(user_datas_dir,f"{userid}.png")
 
-    if os.path.commonprefix((os.path.realpath(filepath),icons_dir)) != icons_dir:
+    if os.path.commonprefix((os.path.realpath(filepath),user_datas_dir)) != user_datas_dir:
         raise HTTPException(status_code=401, detail="Invalid Path")
 
     #ファイルが存在するか
@@ -1006,7 +1064,7 @@ async def user_websocket_endpoint(ws : WebSocket):
                     await delete_friend_user(userid,friendid)
                 elif msgtype == "get_friends":
                     #フレンド
-                    await get_friends(userid)
+                    await ws_get_friends(userid)
         except:
             import traceback
             traceback.print_exc()
