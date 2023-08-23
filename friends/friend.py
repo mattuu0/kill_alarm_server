@@ -78,7 +78,8 @@ def get_friends(userid : str):
         }
         
         return_dict["friends"].append(friend_dict)
-
+    
+    return return_dict
 #IDからフレンド情報を取得する
 def get_info(userid:str,friendid:str):
     #フレンド情報を検索する
