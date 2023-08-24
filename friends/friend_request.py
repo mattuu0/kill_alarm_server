@@ -2,6 +2,7 @@ from database.models import Friend,Friend_request
 from .friend import check_friend,create_friend
 from database.setting import session
 from sqlalchemy import or_
+from server_auth.database import get_user
 
 #リクエストが既に送信済みか
 def check_request(userid:str,friend_userid:str):
@@ -120,3 +121,39 @@ def delete_user(userid :str):
     for friend_data in friend_filter.all():
         session.delete(friend_data)
     session.commit()
+
+#送信済みフレンドリクエスト取得
+def get_sended_requests(userid:str):
+    friend_filter = session.query(Friend_request).filter(Friend_request.userid == userid)
+
+    request_results = {}
+
+    for request in friend_filter.all():
+        #フレンドユーザーを取得する
+        friend_user = get_user(request.friend_userid)
+
+        request_results[request.requestid] = {
+            "friend_UserName" : friend_user.username,
+            "friend_DisplayName" : friend_user.display_name,
+            "friend_UserId" : friend_user.userid 
+        }
+    
+    return request_results
+
+#受信済みリクエスト取得
+def get_recved_requests(userid:str):
+    friend_filter = session.query(Friend_request).filter(Friend_request.friend_userid == userid)
+
+    request_results = {}
+
+    for request in friend_filter.all():
+        #フレンドユーザーを取得する
+        friend_user = get_user(request.userid)
+
+        request_results[request.requestid] = {
+            "friend_UserName" : friend_user.username,
+            "friend_DisplayName" : friend_user.display_name,
+            "friend_UserId" : friend_user.userid 
+        }
+    
+    return request_results
