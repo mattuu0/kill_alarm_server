@@ -124,7 +124,7 @@ def delete_user(userid :str):
 
 #送信済みフレンドリクエスト取得
 def get_sended_requests(userid:str):
-    friend_filter = session.query(Friend_request).filter(Friend_request.friend_userid == userid)
+    friend_filter = session.query(Friend_request).filter(Friend_request.userid == userid)
 
     request_results = {}
 
@@ -142,7 +142,7 @@ def get_sended_requests(userid:str):
 
 #受信済みリクエスト取得
 def get_recved_requests(userid:str):
-    friend_filter = session.query(Friend_request).filter(Friend_request.userid == userid)
+    friend_filter = session.query(Friend_request).filter(Friend_request.friend_userid == userid)
 
     request_results = {}
 
