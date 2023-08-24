@@ -465,6 +465,8 @@ Image_Max_Size = 5 * 1024 * 1024
 @app.post('/change_icon')
 @limiter.limit("10/5seconds")
 def get_userid(request: Request,credentials: JwtAuthorizationCredentials = Security(access_security),file:UploadFile = File(...)):
+    print("send_File")
+
     subjects = dict(credentials.subject)
     userid = subjects["userid"]                                     #ユーザーID取得
     access_tokenid = subjects["tokenid"]                            #アクセストークンID
@@ -800,6 +802,7 @@ async def send_friend_request(userid : str,friend_userid : str):
     #ユーザーが存在するか
     is_registerd,user_obj = check_registerd_from_userid(friend_userid)
 
+    print(friend_userid)
     #送信元通知
     sended_notify = {
         "msgcode" : "11132",
@@ -970,7 +973,9 @@ async def delete_friend_user(userid : str,friendid : str):
 
 #フレンド一覧
 async def ws_get_friends(userid : str):
-    pass
+    friends_dict = get_friends(userid)
+
+    await send_msg(userid,friends_dict)
 
 #ここまで   
 
