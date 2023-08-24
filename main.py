@@ -972,11 +972,11 @@ async def delete_friend_user(userid : str,friendid : str):
 
 #送信済みフレンドリクエスト取得
 async def ws_get_recved_request(userid : str):
-    await send_msg(userid,get_recved_requests(userid))
+    await send_msg(userid,{"msgcode":"11146","requests":get_recved_requests(userid)})
 
 #受信済みフレンドリクエスト取得
 async def ws_get_sended_request(userid : str):
-    await send_msg(userid,get_sended_requests(userid))
+    await send_msg(userid,{"msgcode":"11146","requests":get_sended_requests(userid)})
 
 #フレンド一覧
 async def ws_get_friends(userid : str):
