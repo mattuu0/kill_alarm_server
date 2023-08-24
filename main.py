@@ -983,7 +983,6 @@ async def ws_get_friends(userid : str):
     await send_msg(userid,get_friends(userid))
 
 #ここまで   
-
 #Websocket
 @app.websocket("/userws")
 async def user_websocket_endpoint(ws : WebSocket):
