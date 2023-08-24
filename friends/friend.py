@@ -1,6 +1,7 @@
 from database.models import Friend
 from database.setting import session
 from sqlalchemy import or_
+from server_auth.database import get_user
 
 #フレンドかどうか確認する
 def check_friend(userid:str,friend_userid:str):
@@ -69,11 +70,14 @@ def get_friends(userid : str):
 
     return_dict = {"msgcode":"11144","friends":[]}
     
+    friend_usre_data = get_user(userid)
     #フレンド情報を追加する
     for friend in friends.all():
         friend_dict = {
             "friendid":friend.friendid,                     #相手のID
-            "friend_userid" : friend.friend_userid,         
+            "friend_userid" : friend.friend_userid,
+            "friend_username" : friend_usre_data.username,
+            "friend_displayname" : friend_usre_data.display_name,
             "friended_at" : friend.created_at.timestamp()
         }
         
@@ -93,3 +97,5 @@ def get_info(userid:str,friendid:str):
             return True,friend_data
         
     return False,None
+
+

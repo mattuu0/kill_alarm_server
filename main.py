@@ -37,7 +37,9 @@ from friends.friend_request import (reject_request,
                                     cancel_request,
                                     delete_user as friend_request_delete_func,
                                     create_request,
-                                    check_request)
+                                    check_request,
+                                    get_sended_requests,
+                                    get_recved_requests)
 from Iot.iot import (
     pair_device,
     unpair_device,
@@ -971,14 +973,19 @@ async def delete_friend_user(userid : str,friendid : str):
 
     await send_msg(userid,return_result)
 
+#送信済みフレンドリクエスト取得
+async def ws_get_recved_request(userid : str):
+    await send_msg(userid,{"msgcode":"11146","requests":get_recved_requests(userid)})
+
+#受信済みフレンドリクエスト取得
+async def ws_get_sended_request(userid : str):
+    await send_msg(userid,{"msgcode":"11146","requests":get_sended_requests(userid)})
+
 #フレンド一覧
 async def ws_get_friends(userid : str):
-    friends_dict = get_friends(userid)
-
-    await send_msg(userid,friends_dict)
+    await send_msg(userid,get_friends(userid))
 
 #ここまで   
-
 #Websocket
 @app.websocket("/userws")
 async def user_websocket_endpoint(ws : WebSocket):
@@ -1068,6 +1075,14 @@ async def user_websocket_endpoint(ws : WebSocket):
                     friendid = data_json["friendid"]
 
                     await delete_friend_user(userid,friendid)
+                
+                #受信済みフレンドリクエスト取得
+                elif msgtype == "recved_requests":
+                    await ws_get_recved_request(userid)
+
+                #送信済みリクエスト取得
+                elif msgtype == "sended_requests":
+                    await ws_get_sended_request(userid)
                 elif msgtype == "get_friends":
                     #フレンド
                     await ws_get_friends(userid)
@@ -1170,3 +1185,5 @@ async def iot_websocket_endpoint(ws : WebSocket):
         pass
 
 uvicorn.run(app,host="0.0.0.0",port=8000)#,ssl_keyfile="./server.key",ssl_certfile="./server.crt")
+
+
