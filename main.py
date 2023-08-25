@@ -643,8 +643,8 @@ async def wakeup_friend(request: Request,timers_data : timer_body,credentials: J
         is_registerd,iot_device = get_device_from_userid(str(userid))
 
         #登録されていなかったら
-        if not is_registerd:
-            raise HTTPException(status_code=400, detail="User has not paired any device")
+        # if not is_registerd:
+        #     raise HTTPException(status_code=400, detail="User has not paired any device")
 
         notify_data = {
             "msgcode" : "11142",
@@ -762,7 +762,11 @@ async def wakeup_friend(request: Request,select_data : wakeup_payload,credential
         }
 
         #IOTへ通知する
-        await send_msg(iot_device.deviceid,notify_payload)
+        #登録されていなかったら
+        if is_registerd:
+        #     raise HTTPException(status_code=400, detail="User has not paired any device")
+            await send_msg(iot_device.deviceid,notify_payload)
+            
         return {"status":"success"}
     else:
         raise HTTPException(status_code=403, detail="Invalid Token")
