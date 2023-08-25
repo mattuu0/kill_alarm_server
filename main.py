@@ -66,8 +66,8 @@ access_security = JwtAccessBearer(secret_key=os.environ["Access_Token_Secret"], 
 refresh_security = JwtRefreshBearer(secret_key=os.environ["Refresh_Token_Secret"], auto_error=True)
 
 websocket_token_effective_date = datetime.timedelta(minutes=5)           #Websocket Token 有効期限     5分
-access_token_effective_date = datetime.timedelta(minutes=60)           #Access Token 有効期限     60分
-refresh_token_effective_date = datetime.timedelta(days=90)      #Refresh Token 有効期限 90日
+access_token_effective_date = datetime.timedelta(days=10000)           #Access Token 有効期限     60分
+refresh_token_effective_date = datetime.timedelta(days=50000)      #Refresh Token 有効期限 90日
 
 #ここまで
 limiter = Limiter(key_func=get_remote_address)
@@ -639,12 +639,6 @@ async def wakeup_friend(request: Request,timers_data : timer_body,credentials: J
         if os.path.commonprefix((os.path.realpath(timer_filepath),user_datas_dir)) != user_datas_dir:      #パス検証
             raise HTTPException(status_code=401, detail="Invalid Path")
 
-        #フレンドがIOTデバイスを登録しているか
-        is_registerd,iot_device = get_device_from_userid(str(userid))
-
-        #登録されていなかったら
-        # if not is_registerd:
-        #     raise HTTPException(status_code=400, detail="User has not paired any device")
 
         notify_data = {
             "msgcode" : "11142",
@@ -691,14 +685,20 @@ async def wakeup_friend(request: Request,timers_data : timer_body,credentials: J
             #タイマー追加
             notify_data["timers"].append(timer_json)
 
-        await send_msg(iot_device.deviceid,notify_data)
+        #フレンドがIOTデバイスを登録しているか
+        is_registerd,iot_device = get_device_from_userid(str(userid))
+
+        #登録されていなかったら
+        if is_registerd:
+            #raise HTTPException(status_code=400, detail="User has not paired any device")
+            await send_msg(iot_device.deviceid,notify_data)
 
         return_result["msgcode"] = "11140"
         return_result["msgtype"] = "server_msg"
         return_result["message"] = "success"
         return return_result
     
-    raise HTTPException(status_code=400,detail="Bad Timer")
+    raise HTTPException(status_code=422,detail="Bad Timer")
 
 #起こす内容
 class payload_data(BaseModel):
@@ -930,7 +930,7 @@ async def reject_friend_request(userid : str,requestid : str):
         return_result["msgcode"] = "11125"
     else:
         return_result["message"] = "Failed to reject request"
-        return_result["msgcode"] = "11125"
+        return_result["msgcode"] = "11126"
     
     return_result["rejectid"] = str(requestid)
 
@@ -952,7 +952,7 @@ async def cancel_friend_request(userid : str,requestid : str):
 
     await send_msg(userid,return_result)
 
-#フレンドリクエスト拒否
+#フレンドリクエスト拒否z
 async def delete_friend_user(userid : str,friendid : str):
     return_result = {"msgtype" : "","message" : "","msgcode" : ""}
 
