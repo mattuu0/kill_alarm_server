@@ -639,13 +639,6 @@ async def wakeup_friend(request: Request,timers_data : timer_body,credentials: J
         if os.path.commonprefix((os.path.realpath(timer_filepath),user_datas_dir)) != user_datas_dir:      #パス検証
             raise HTTPException(status_code=401, detail="Invalid Path")
 
-        #フレンドがIOTデバイスを登録しているか
-        is_registerd,iot_device = get_device_from_userid(str(userid))
-
-        #登録されていなかったら
-        if not is_registerd:
-            raise HTTPException(status_code=400, detail="User has not paired any device")
-
         notify_data = {
             "msgcode" : "11142",
             "timers" : []
@@ -691,14 +684,20 @@ async def wakeup_friend(request: Request,timers_data : timer_body,credentials: J
             #タイマー追加
             notify_data["timers"].append(timer_json)
 
-        await send_msg(iot_device.deviceid,notify_data)
+        #フレンドがIOTデバイスを登録しているか
+        is_registerd,iot_device = get_device_from_userid(str(userid))
+
+        #登録されていなかったら
+        if is_registerd:
+            #raise HTTPException(status_code=400, detail="User has not paired any device")
+            await send_msg(iot_device.deviceid,notify_data)
 
         return_result["msgcode"] = "11140"
         return_result["msgtype"] = "server_msg"
         return_result["message"] = "success"
         return return_result
     
-    raise HTTPException(status_code=400,detail="Bad Timer")
+    raise HTTPException(status_code=422,detail="Bad Timer")
 
 #起こす内容
 class payload_data(BaseModel):
