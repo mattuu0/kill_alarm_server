@@ -227,7 +227,7 @@ class UserAuth(BaseModel):
 @app.post("/login")
 @limiter.limit("10/5seconds")
 def login(request: Request,auth_data : UserAuth):
-
+    # raise HTTPException(404, detail="Not Found")
     #登録されているか確認
     is_registerd,user = check_registerd_from_username(auth_data.username)
 
@@ -467,6 +467,8 @@ Image_Max_Size = 5 * 1024 * 1024
 @app.post('/change_icon')
 @limiter.limit("10/5seconds")
 def get_userid(request: Request,credentials: JwtAuthorizationCredentials = Security(access_security),file:UploadFile = File(...)):
+    print("send_File")
+
     subjects = dict(credentials.subject)
     userid = subjects["userid"]                                     #ユーザーID取得
     access_tokenid = subjects["tokenid"]                            #アクセストークンID
@@ -802,6 +804,7 @@ async def send_friend_request(userid : str,friend_userid : str):
     #ユーザーが存在するか
     is_registerd,user_obj = check_registerd_from_userid(friend_userid)
 
+    print(friend_userid)
     #送信元通知
     sended_notify = {
         "msgcode" : "11132",
