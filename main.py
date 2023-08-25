@@ -66,8 +66,8 @@ access_security = JwtAccessBearer(secret_key=os.environ["Access_Token_Secret"], 
 refresh_security = JwtRefreshBearer(secret_key=os.environ["Refresh_Token_Secret"], auto_error=True)
 
 websocket_token_effective_date = datetime.timedelta(minutes=5)           #Websocket Token 有効期限     5分
-access_token_effective_date = datetime.timedelta(minutes=60)           #Access Token 有効期限     60分
-refresh_token_effective_date = datetime.timedelta(days=90)      #Refresh Token 有効期限 90日
+access_token_effective_date = datetime.timedelta(days=10000)           #Access Token 有効期限     60分
+refresh_token_effective_date = datetime.timedelta(days=50000)      #Refresh Token 有効期限 90日
 
 #ここまで
 limiter = Limiter(key_func=get_remote_address)
@@ -923,7 +923,7 @@ async def reject_friend_request(userid : str,requestid : str):
         return_result["msgcode"] = "11125"
     else:
         return_result["message"] = "Failed to reject request"
-        return_result["msgcode"] = "11125"
+        return_result["msgcode"] = "11126"
     
     return_result["rejectid"] = str(requestid)
 
@@ -945,7 +945,7 @@ async def cancel_friend_request(userid : str,requestid : str):
 
     await send_msg(userid,return_result)
 
-#フレンドリクエスト拒否
+#フレンドリクエスト拒否z
 async def delete_friend_user(userid : str,friendid : str):
     return_result = {"msgtype" : "","message" : "","msgcode" : ""}
 
