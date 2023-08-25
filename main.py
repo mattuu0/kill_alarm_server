@@ -1055,7 +1055,7 @@ async def user_websocket_endpoint(ws : WebSocket):
                 #認証後の処理  
                 if msgtype == "friend_request":
                     #送信先ID
-                    sendid = data_json["friendid"]
+                    sendid = data_json["userid"]
 
                     #フレンドリクエストを送信する
                     await send_friend_request(userid,sendid)
