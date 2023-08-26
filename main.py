@@ -440,6 +440,48 @@ def get_userid(request: Request,credentials: JwtAuthorizationCredentials = Secur
     raise HTTPException(status_code=401, detail="Invalid Token")
 
 #認証が必要なエンドポイント
+@app.get('/get_friends')
+@limiter.limit("10/5seconds")
+def get_friend_users(request: Request,credentials: JwtAuthorizationCredentials = Security(access_security),):
+    subjects = dict(credentials.subject)
+    userid = subjects["userid"]                                     #ユーザーID取得
+    access_tokenid = subjects["tokenid"]                            #アクセストークンID
+    
+    #アクセストークン検証
+    if token_util.verify_access_token(userid,access_tokenid):
+        return {"friends":get_friends(userid)}
+    
+    raise HTTPException(status_code=401, detail="Invalid Token")
+
+#認証が必要なエンドポイント
+@app.get('/get_recvd_requests')
+@limiter.limit("10/5seconds")
+def recved_requests(request: Request,credentials: JwtAuthorizationCredentials = Security(access_security),):
+    subjects = dict(credentials.subject)
+    userid = subjects["userid"]                                     #ユーザーID取得
+    access_tokenid = subjects["tokenid"]                            #アクセストークンID
+    
+    #アクセストークン検証
+    if token_util.verify_access_token(userid,access_tokenid):
+        return {"requests":get_recved_requests(userid)}
+    
+    raise HTTPException(status_code=401, detail="Invalid Token")
+
+#認証が必要なエンドポイント
+@app.get('/get_sended_requests')
+@limiter.limit("10/5seconds")
+def sended_requests(request: Request,credentials: JwtAuthorizationCredentials = Security(access_security),):
+    subjects = dict(credentials.subject)
+    userid = subjects["userid"]                                     #ユーザーID取得
+    access_tokenid = subjects["tokenid"]                            #アクセストークンID
+    
+    #アクセストークン検証
+    if token_util.verify_access_token(userid,access_tokenid):
+        return {"requests":get_sended_requests(userid)}
+    
+    raise HTTPException(status_code=401, detail="Invalid Token")
+
+#認証が必要なエンドポイント
 @app.get('/ws_token')
 @limiter.limit("10/5seconds")
 def get_userid(request: Request,credentials: JwtAuthorizationCredentials = Security(access_security),):
