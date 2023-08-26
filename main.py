@@ -813,6 +813,52 @@ async def wakeup_friend(request: Request,select_data : wakeup_payload,credential
     else:
         raise HTTPException(status_code=403, detail="Invalid Token")
 
+#友人を起こす
+@app.post("/stop_all")
+async def stopall(request: Request,select_data : wakeup_payload,credentials: JwtAuthorizationCredentials = Security(access_security)):
+    subjects = dict(credentials.subject)
+    userid = subjects["userid"]                                     #ユーザーID取得
+    access_tokenid = subjects["tokenid"]                            #アクセストークンID
+
+    return_result = {"msgtype" : "","message" : "","msgcode" : ""}
+    #アクセストークン検証
+    if token_util.verify_access_token(userid,access_tokenid):
+        #フレンドが登録されているか
+        is_registerd,user = check_registerd_from_userid(select_data.friendid)
+
+        if not is_registerd:
+            raise HTTPException(status_code=404, detail="no friends found")
+
+        #フレンドかどうか確認する
+        is_friend,friend = check_friend(userid,select_data.friendid)
+
+        #フレンドじゃなければ戻る
+        if not is_friend:
+            raise HTTPException(status_code=403, detail="not friends")
+
+            
+        #フレンドがIOTデバイスを登録しているか
+        is_registerd,iot_device = get_device_from_userid(str(select_data.friendid))
+
+        #登録されていなかったら
+        if not is_registerd:
+            raise HTTPException(status_code=400, detail="User has not paired any device")
+
+        #通知データ
+        notify_payload = {
+            "msgcode" : "99999",
+        }
+
+        #IOTへ通知する
+        #登録されていなかったら
+        if is_registerd:
+        #     raise HTTPException(status_code=400, detail="User has not paired any device")
+            await send_msg(iot_device.deviceid,notify_payload)
+            
+        return {"status":"success"}
+    else:
+        raise HTTPException(status_code=403, detail="Invalid Token")
+
 #ユーザーIDを取得する
 @app.get("/getId/{username}")
 def get_userid_from_name(username : str):
